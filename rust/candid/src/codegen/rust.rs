@@ -233,7 +233,7 @@ impl<'a> LanguageBinding for RustLanguageBinding<'a> {
                     id,
                     typ: IDLType::RecordT(_),
                 }) => {
-                    if id == var {
+                    if id.name == var {
                         Some(format!("Box<{}>", var))
                     } else {
                         None
@@ -271,7 +271,7 @@ impl<'a> LanguageBinding for RustLanguageBinding<'a> {
     fn declare(&self, id: &str, ty: &IDLType) -> Result<String> {
         match ty {
             IDLType::PrimT(prim) => self.declare_prim(id, prim),
-            IDLType::VarT(var) => self.declare_var(id, var),
+            IDLType::VarT(var) => self.declare_var(id, &var.name),
             IDLType::FuncT(func) => self.declare_func(id, func),
             IDLType::OptT(sub_t) => self.declare_opt(id, sub_t.as_ref()),
             IDLType::VecT(item_t) => self.declare_vec(id, item_t.as_ref()),
@@ -326,7 +326,7 @@ impl<'a> LanguageBinding for RustLanguageBinding<'a> {
     }
 
     fn declaration_binding(&self, binding: &Binding) -> Result<String> {
-        self.declare(&binding.id, &binding.typ)
+        self.declare(&binding.id.name, &binding.typ)
     }
 
     fn service_binding(&self, _id: &str, _func_t: &FuncType) -> Result<String> {
@@ -363,7 +363,7 @@ impl<'a> LanguageBinding for RustLanguageBinding<'a> {
                         .collect::<Result<Vec<(String, String)>>>()?;
 
                     self.config.bindings.actor_function(
-                        id,
+                        &id.name,
                         &arguments,
                         &return_type,
                         func_t.is_query(),

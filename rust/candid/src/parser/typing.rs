@@ -157,8 +157,8 @@ pub fn check_type(env: &Env, t: &IDLType) -> Result<Type> {
     match t {
         IDLType::PrimT(prim) => Ok(check_prim(prim)),
         IDLType::VarT(id) => {
-            env.te.find_type(id)?;
-            Ok(Type::Var(id.to_string()))
+            env.te.find_type(&id.name)?;
+            Ok(Type::Var(id.name.to_string()))
         }
         IDLType::OptT(t) => {
             let t = check_type(env, t)?;
@@ -252,11 +252,11 @@ fn check_meths(env: &Env, ms: &[Binding]) -> Result<Vec<(String, Type)>> {
         if !env.pre && env.te.as_func(&t).is_err() {
             return Err(Error::msg(format!(
                 "method {} is a non-function type {}",
-                meth.id,
+                meth.id.name,
                 meth.typ.to_doc().pretty(80)
             )));
         }
-        res.push((meth.id.to_owned(), t));
+        res.push((meth.id.name.to_owned(), t));
     }
     Ok(res)
 }
@@ -266,9 +266,9 @@ fn check_defs(env: &mut Env, decs: &[Dec]) -> Result<()> {
         match dec {
             Dec::TypD(Binding { id, typ }) => {
                 let t = check_type(env, typ)?;
-                env.te.0.insert(id.to_string(), t);
+                env.te.0.insert(id.name.to_string(), t);
             }
-            Dec::ImportD(_) => (),
+            Dec::ImportD(_, _) => (),
         }
     }
     Ok(())
@@ -300,9 +300,9 @@ fn check_cycle(env: &TypeEnv) -> Result<()> {
 fn check_decs(env: &mut Env, decs: &[Dec]) -> Result<()> {
     for dec in decs.iter() {
         if let Dec::TypD(Binding { id, typ: _ }) = dec {
-            let duplicate = env.te.0.insert(id.to_string(), Type::Unknown);
+            let duplicate = env.te.0.insert(id.name.to_string(), Type::Unknown);
             if duplicate.is_some() {
-                return Err(Error::msg(format!("duplicate binding for {}", id)));
+                return Err(Error::msg(format!("duplicate binding for {}", id.name)));
             }
         }
     }
@@ -352,7 +352,7 @@ fn load_imports(
     list: &mut Vec<PathBuf>,
 ) -> Result<()> {
     for dec in prog.decs.iter() {
-        if let Dec::ImportD(file) = dec {
+        if let Dec::ImportD(file, _) = dec {
             let path = resolve_path(base, file);
             if visited.insert(path.clone()) {
                 let code = std::fs::read_to_string(&path)

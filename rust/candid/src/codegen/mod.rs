@@ -40,7 +40,7 @@ pub trait LanguageBinding {
     fn usage(&self, ty: &IDLType) -> Result<String> {
         match ty {
             IDLType::PrimT(prim) => self.usage_prim(prim),
-            IDLType::VarT(var) => self.usage_var(var),
+            IDLType::VarT(var) => self.usage_var(&var.name),
             IDLType::FuncT(func) => self.usage_func(func),
             IDLType::OptT(sub_t) => self.usage_opt(sub_t.as_ref()),
             IDLType::VecT(item_t) => self.usage_vec(item_t.as_ref()),
@@ -82,7 +82,7 @@ pub trait LanguageBinding {
     fn declare(&self, id: &str, ty: &IDLType) -> Result<String> {
         match ty {
             IDLType::PrimT(prim) => self.declare_prim(id, prim),
-            IDLType::VarT(var) => self.declare_var(id, var),
+            IDLType::VarT(var) => self.declare_var(id, &var.name),
             IDLType::FuncT(func) => self.declare_func(id, func),
             IDLType::OptT(sub_t) => self.declare_opt(id, sub_t.as_ref()),
             IDLType::VecT(item_t) => self.declare_vec(id, item_t.as_ref()),
@@ -125,7 +125,7 @@ pub trait LanguageBinding {
 
     /// Function called when a declaration binding is used.
     fn declaration_binding(&self, binding: &Binding) -> Result<String> {
-        self.declare(&binding.id, &binding.typ)
+        self.declare(&binding.id.name, &binding.typ)
     }
 
     /// Function called for all declarations in a Candid file.
@@ -133,7 +133,7 @@ pub trait LanguageBinding {
         Ok(declarations
             .iter()
             .map(|d| match d {
-                Dec::ImportD(module) => self.declaration_import(module),
+                Dec::ImportD(module, _) => self.declaration_import(module),
                 Dec::TypD(binding) => self.declaration_binding(binding),
             })
             .collect::<Result<Vec<String>>>()?
@@ -147,7 +147,7 @@ pub trait LanguageBinding {
         bindings
             .iter()
             .map(|Binding { id, typ }| match typ {
-                IDLType::FuncT(func_t) => self.service_binding(id, func_t),
+                IDLType::FuncT(func_t) => self.service_binding(&id.name, func_t),
                 _ => self.usage(typ),
             })
             .collect::<Result<Vec<String>>>()

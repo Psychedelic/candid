@@ -1,11 +1,27 @@
 use crate::types::Label;
 use crate::Result;
+use super::token::Span;
 use pretty::RcDoc;
+
+#[derive(Debug, Clone)]
+pub struct Identifier {
+    pub span: Span,
+    pub name: String
+}
+
+impl From<(String, Span)> for Identifier {
+    fn from((name, span): (String, Span)) -> Self {
+        Self {
+            span,
+            name
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum IDLType {
     PrimT(PrimType),
-    VarT(String),
+    VarT(Identifier),
     FuncT(FuncType),
     OptT(Box<IDLType>),
     VecT(Box<IDLType>),
@@ -99,12 +115,12 @@ pub struct TypeField {
 #[derive(Debug)]
 pub enum Dec {
     TypD(Binding),
-    ImportD(String),
+    ImportD(String, Span),
 }
 
 #[derive(Debug, Clone)]
 pub struct Binding {
-    pub id: String,
+    pub id: Identifier,
     pub typ: IDLType,
 }
 
@@ -164,7 +180,7 @@ impl ToDoc for IDLProg {
             let actor = self.actor.as_ref().unwrap();
             let doc = doc.append(RcDoc::text("service : "));
             match actor {
-                IDLType::VarT(ref var) => doc.append(RcDoc::text(var.to_string())),
+                IDLType::VarT(ref var) => doc.append(RcDoc::text(var.name.to_string())),
                 IDLType::ServT(ref meths) => doc.append(meths_to_doc(meths)),
                 _ => unreachable!(),
             }
@@ -178,14 +194,14 @@ impl ToDoc for Dec {
     fn to_doc(&self) -> RcDoc<()> {
         match *self {
             Dec::TypD(ref b) => RcDoc::text("type ").append(b.to_doc()),
-            Dec::ImportD(ref file) => RcDoc::text(format!("import \"{}\"", file)),
+            Dec::ImportD(ref file, _) => RcDoc::text(format!("import \"{}\"", file)),
         }
     }
 }
 
 impl ToDoc for Binding {
     fn to_doc(&self) -> RcDoc<()> {
-        RcDoc::text(format!("{} =", self.id))
+        RcDoc::text(format!("{} =", self.id.name))
             .append(RcDoc::space())
             .append(self.typ.to_doc())
             .nest(2)
@@ -197,7 +213,7 @@ impl ToDoc for IDLType {
     fn to_doc(&self) -> RcDoc<()> {
         match self {
             IDLType::PrimT(p) => p.to_doc(),
-            IDLType::VarT(var) => RcDoc::text(var),
+            IDLType::VarT(var) => RcDoc::text(&var.name),
             IDLType::FuncT(func) => RcDoc::text("func")
                 .append(RcDoc::space())
                 .append(func.to_doc()),
@@ -256,9 +272,9 @@ fn fields_to_doc(fields: &[TypeField]) -> RcDoc<()> {
 fn meths_to_doc(meths: &[Binding]) -> RcDoc<()> {
     RcDoc::text("{")
         .append(RcDoc::concat(meths.iter().map(|meth| {
-            let doc = RcDoc::line().append(RcDoc::text(format!("{}:", meth.id)));
+            let doc = RcDoc::line().append(RcDoc::text(format!("{}:", meth.id.name)));
             let doc = match meth.typ {
-                IDLType::VarT(ref var) => doc.append(RcDoc::space().append(RcDoc::text(var))),
+                IDLType::VarT(ref var) => doc.append(RcDoc::space().append(RcDoc::text(&var.name))),
                 IDLType::FuncT(ref func) => {
                     doc.append(RcDoc::space().append(func.to_doc()).nest(2))
                 }
